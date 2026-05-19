@@ -143,6 +143,55 @@ describe("TUI Kitty image cleanup", () => {
 
 		tui.stop();
 	});
+
+	it("keeps terminal scrollback during full redraws by default", async () => {
+		await withEnv({ PI_CLEAR_SCROLLBACK: undefined }, async () => {
+			const terminal = new LoggingVirtualTerminal(40, 10);
+			const tui = new TUI(terminal);
+			const component = new TestComponent();
+			tui.addChild(component);
+
+			component.lines = ["Line 0"];
+			tui.start();
+			await terminal.waitForRender();
+			terminal.clearWrites();
+
+			component.lines = ["Line 0 after resize"];
+			terminal.resize(50, 10);
+			await terminal.waitForRender();
+
+			const writes = terminal.getWrites();
+			assert.ok(writes.includes("\x1b[2J\x1b[H"), "full redraw should clear the visible screen and home cursor");
+			assert.ok(!writes.includes("\x1b[3J"), "full redraw should not clear scrollback by default");
+
+			tui.stop();
+		});
+	});
+
+	it("can clear terminal scrollback during full redraws when explicitly enabled", async () => {
+		await withEnv({ PI_CLEAR_SCROLLBACK: "1" }, async () => {
+			const terminal = new LoggingVirtualTerminal(40, 10);
+			const tui = new TUI(terminal);
+			const component = new TestComponent();
+			tui.addChild(component);
+
+			component.lines = ["Line 0"];
+			tui.start();
+			await terminal.waitForRender();
+			terminal.clearWrites();
+
+			component.lines = ["Line 0 after resize"];
+			terminal.resize(50, 10);
+			await terminal.waitForRender();
+
+			assert.ok(
+				terminal.getWrites().includes("\x1b[3J"),
+				"PI_CLEAR_SCROLLBACK=1 should preserve old scrollback-clearing behavior",
+			);
+
+			tui.stop();
+		});
+	});
 });
 
 describe("TUI resize handling", () => {

@@ -985,7 +985,9 @@ export class TUI extends Container {
 			let buffer = "\x1b[?2026h"; // Begin synchronized output
 			if (clear) {
 				buffer += this.deleteKittyImages(this.previousKittyImageIds);
-				buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
+				// Clear the visible screen and home the cursor, but keep terminal/tmux
+				// scrollback by default so copy-mode can still show the current chat transcript.
+				buffer += process.env.PI_CLEAR_SCROLLBACK === "1" ? "\x1b[2J\x1b[H\x1b[3J" : "\x1b[2J\x1b[H";
 			}
 			for (let i = 0; i < newLines.length; i++) {
 				if (i > 0) buffer += "\r\n";
